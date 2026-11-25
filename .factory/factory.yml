@@ -1,0 +1,19 @@
+version: 1
+image: docker.io/library/node:24-bookworm@sha256:2f6533894e81c654764273b03a065aa3265fa50db292ba8348b6c4bb77233e98
+setup: export COREPACK_ENABLE_DOWNLOAD_PROMPT=0 ELECTRON_SKIP_BINARY_DOWNLOAD=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 CI=1 && corepack enable && yarn install --immutable
+checks:
+  - name: typecheck
+    command: yarn workspace @actual-app/web run typecheck
+  - name: test
+    command: >-
+      CI=1 yarn workspace @actual-app/web exec vitest --run; ec=$?;
+      cp packages/desktop-client/test-results/junit.xml "$FACTORY_RESULTS/web-junit.xml" 2>/dev/null; exit $ec
+allowedPaths:
+  - packages/desktop-client/src/hooks/**
+  - upcoming-release-notes/**
+protectedPaths:
+  - packages/desktop-client/factory-acceptance/**
+acceptance:
+  folder: packages/desktop-client/factory-acceptance
+  command: bash packages/desktop-client/factory-acceptance/run.sh {files}
+  results: junit
