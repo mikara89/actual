@@ -28,6 +28,21 @@ import type {
 import { aqlQuery } from '#queries/aqlQuery';
 import { useDispatch } from '#redux';
 
+// A duplicate is a manual transaction, so it must not claim to be the original
+// bank transaction nor inherit its schedule link. Both are dropped on the
+// parent and on every split child, without looking at any schedule or rule.
+function normalizeDuplicateTransaction(
+  transaction: TransactionEntity,
+): TransactionEntity {
+  return {
+    ...transaction,
+    imported_id: null,
+    schedule: null,
+    cleared: false,
+    reconciled: false,
+  } as unknown as TransactionEntity;
+}
+
 type BatchReconciledReason = Extract<
   ConfirmTransactionEditReason,
   `batch${string}Reconciled`
@@ -298,11 +313,9 @@ export function useTransactionBatchActions() {
         added: transactions.reduce(
           (newTransactions: TransactionEntity[], trans: TransactionEntity) => {
             return newTransactions.concat(
-              realizeTempTransactions(ungroupTransaction(trans)).map(t => ({
-                ...t,
-                cleared: false,
-                reconciled: false,
-              })),
+              realizeTempTransactions(ungroupTransaction(trans)).map(
+                normalizeDuplicateTransaction,
+              ),
             );
           },
           [],
